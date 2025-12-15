@@ -1,2 +1,11 @@
 # created by virtualenv automatically
 .secret.txt
+venv
+result
+logs
+database.db
+cookies.json
+__pycache__/
+.idea
+*.py[cod]
+*$py.class

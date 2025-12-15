@@ -176,8 +176,8 @@ class AvitoParse:
                     time.sleep(self.config.pause_between_links)
                     continue
 
-                if not self.xlsx_handler and self.config.one_file_for_link:
-                    self.xlsx_handler = XLSXHandler(f"result/{_index + 1}.xlsx")
+                # if not self.xlsx_handler and self.config.one_file_for_link:
+                #     self.xlsx_handler = XLSXHandler(f"result/{_index + 1}.xlsx")
 
                 data_from_page = self.find_json_on_page(html_code=html_code)
                 try:
@@ -197,7 +197,7 @@ class AvitoParse:
 
                 filter_ads = self.filter_ads(ads=ads)
 
-                if self.tg_handler and not self.config.one_time_start:
+                if self.tg_handler:
                     self._send_to_tg(ads=filter_ads)
 
                 filter_ads = self.parse_views(ads=filter_ads)
@@ -213,11 +213,11 @@ class AvitoParse:
                 logger.info(f"Пауза {self.config.pause_between_links} сек.")
                 time.sleep(self.config.pause_between_links)
 
-            if ads_in_link:
-                logger.info(f"Сохраняю в Excel {len(ads_in_link)} объявлений")
-                self.__save_data(ads=ads_in_link)
-            else:
-                logger.info("Сохранять нечего")
+            # if ads_in_link:
+            #     logger.info(f"Сохраняю в Excel {len(ads_in_link)} объявлений")
+            #     self.__save_data(ads=ads_in_link)
+            # else:
+            #     logger.info("Сохранять нечего")
 
             if self.config.one_file_for_link:
                 self.xlsx_handler = None
