@@ -5,3 +5,5 @@ result
 .git
 venv
 .gitignore
+.idea
+.github
