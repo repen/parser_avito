@@ -42,4 +42,5 @@ class AvitoConfig:
     parse_views: bool = False
     save_xlsx: bool = True
     use_webdriver: bool = True
+    database: str = "database.db"
 

@@ -1,0 +1,21 @@
+services:
+
+  avito_bot:
+    restart: unless-stopped
+    image: py_avito_bot
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - avito.volume:/volume
+    command: >
+      sh -c "
+      while true; do
+        python parser_cls.py;
+        echo 'Sleep avito bot 1 hours';
+        sleep 3600;
+      done"
+
+volumes:
+  avito.volume:
+    name: avito.volume

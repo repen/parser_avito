@@ -26,7 +26,7 @@ from xlsx_service import XLSXHandler
 
 DEBUG_MODE = False
 
-logger.add("logs/app.log", rotation="5 MB", retention="5 days", level="DEBUG")
+# logger.add("logs/app.log", rotation="5 MB", retention="5 days", level="DEBUG")
 
 
 class AvitoParse:
@@ -37,7 +37,7 @@ class AvitoParse:
     ):
         self.config = config
         self.proxy_obj = self.get_proxy_obj()
-        self.db_handler = SQLiteDBHandler()
+        self.db_handler = SQLiteDBHandler(db_name=self.config.database)
         self.tg_handler = self.get_tg_handler()
         self.xlsx_handler = XLSXHandler(self.__get_file_title())
         self.stop_event = stop_event
