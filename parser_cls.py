@@ -206,9 +206,8 @@ class AvitoParse:
 
                 url = self.get_next_page_url(url=url)
 
-                if _index:
-                    logger.info(f"Пауза {self.config.pause_between_links} сек.")
-                    time.sleep(self.config.pause_between_links)
+                logger.info(f"Пауза {self.config.pause_between_links} сек.")
+                time.sleep(self.config.pause_between_links)
 
 
         logger.info(f"Хорошие запросы: {self.good_request_count}шт, плохие: {self.bad_request_count}шт")
