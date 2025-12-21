@@ -43,4 +43,5 @@ class AvitoConfig:
     save_xlsx: bool = True
     use_webdriver: bool = True
     database: str = "database.db"
+    cookies: str = "cookies.json"
 

@@ -57,9 +57,10 @@ class AvitoParse:
     def _send_to_tg(self, ads: list[Item]) -> None:
         for ad in ads:
             self.tg_handler.send_to_tg(ad=ad)
+            time.sleep(3)
 
     def get_proxy_obj(self) -> Proxy | None:
-        if all([self.config.proxy_string, self.config.proxy_change_url]):
+        if self.config.proxy_string:
             return Proxy(
                 proxy_string=self.config.proxy_string,
                 change_ip_link=self.config.proxy_change_url
@@ -95,26 +96,26 @@ class AvitoParse:
 
     def save_cookies(self) -> None:
         """Сохраняет cookies из requests.Session в JSON-файл."""
-        with open("cookies.json", "w") as f:
+        with open(self.config.cookies, "w") as f:
             json.dump(self.session.cookies.get_dict(), f)
 
     def load_cookies(self) -> None:
         """Загружает cookies из JSON-файла в requests.Session."""
         try:
-            with open("cookies.json", "r") as f:
+            with open(self.config.cookies, "r") as f:
                 cookies = json.load(f)
                 jar = RequestsCookieJar()
                 for k, v in cookies.items():
                     jar.set(k, v)
                 self.session.cookies.update(jar)
         except FileNotFoundError:
-            pass
+            logger.warning(f"No cookies files  {self.config.cookies}")
 
     def fetch_data(self, url, retries=3, backoff_factor=1):
         proxy_data = None
         if self.proxy_obj:
             proxy_data = {
-                          "https": f"http://{self.config.proxy_string}"
+                "https": f"http://{self.config.proxy_string}"
             }
 
         for attempt in range(1, retries + 1):
@@ -140,7 +141,9 @@ class AvitoParse:
                     self.session = requests.Session()
                     if attempt >= 3:
                         self.cookies = self.get_cookies()
-                    self.change_ip()
+                    # self.change_ip()
+                    logger.info("Wait 10 seconds...")
+                    time.sleep(10)
                     raise requests.RequestsError(f"Слишком много запросов: {response.status_code}")
 
                 self.save_cookies()
@@ -165,19 +168,14 @@ class AvitoParse:
             for i in range(0, self.config.count):
                 if self.stop_event and self.stop_event.is_set():
                     return
-                if DEBUG_MODE:
-                    html_code = open("december.txt", "r", encoding="utf-8").read()
-                else:
-                    html_code = self.fetch_data(url=url, retries=self.config.max_count_of_retry)
+
+                html_code = self.fetch_data(url=url, retries=self.config.max_count_of_retry)
 
                 if not html_code:
                     logger.warning(
                         f"Не удалось получить HTML для {url}, пробую заново через {self.config.pause_between_links} сек.")
                     time.sleep(self.config.pause_between_links)
                     continue
-
-                # if not self.xlsx_handler and self.config.one_file_for_link:
-                #     self.xlsx_handler = XLSXHandler(f"result/{_index + 1}.xlsx")
 
                 data_from_page = self.find_json_on_page(html_code=html_code)
                 try:
@@ -188,15 +186,13 @@ class AvitoParse:
                     continue
 
                 ads = self._clean_null_ads(ads=ads_models.items)
-
                 ads = self._add_seller_to_ads(ads=ads)
-
                 if not ads:
                     logger.info("Объявления закончились, заканчиваю работу с данной ссылкой")
                     break
 
                 filter_ads = self.filter_ads(ads=ads)
-
+                filter_ads = [x for x in filter_ads if x]
                 if self.tg_handler:
                     self._send_to_tg(ads=filter_ads)
 
@@ -210,23 +206,13 @@ class AvitoParse:
 
                 url = self.get_next_page_url(url=url)
 
-                logger.info(f"Пауза {self.config.pause_between_links} сек.")
-                time.sleep(self.config.pause_between_links)
+                if _index:
+                    logger.info(f"Пауза {self.config.pause_between_links} сек.")
+                    time.sleep(self.config.pause_between_links)
 
-            # if ads_in_link:
-            #     logger.info(f"Сохраняю в Excel {len(ads_in_link)} объявлений")
-            #     self.__save_data(ads=ads_in_link)
-            # else:
-            #     logger.info("Сохранять нечего")
-
-            if self.config.one_file_for_link:
-                self.xlsx_handler = None
 
         logger.info(f"Хорошие запросы: {self.good_request_count}шт, плохие: {self.bad_request_count}шт")
 
-        if self.config.one_time_start and self.tg_handler:
-            self.tg_handler.send_to_tg(msg="Парсинг Авито завершён. Все ссылки обработаны")
-            self.stop_event = True
 
     @staticmethod
     def _clean_null_ads(ads: list[Item]) -> list[Item]:
@@ -483,22 +469,102 @@ class AvitoParse:
             logger.error(f"Не смог сформировать ссылку на следующую страницу для {url}. Ошибка: {err}")
 
 
-if __name__ == "__main__":
-    try:
-        config = load_avito_config("config.toml")
-    except Exception as err:
-        logger.error(f"Ошибка загрузки конфига: {err}")
-        exit(1)
+class AvitoParse2(AvitoParse):
 
-    while True:
-        try:
-            parser = AvitoParse(config)
-            parser.parse()
-            if config.one_time_start:
-                logger.info("Парсинг завершен т.к. включён one_time_start в настройках")
-                break
-            logger.info(f"Парсинг завершен. Пауза {config.pause_general} сек")
-            time.sleep(config.pause_general)
-        except Exception as err:
-            logger.error(f"Произошла ошибка {err}. Будет повторный запуск через 30 сек.")
-            time.sleep(30)
+    def _getLocationId(self, data):
+        return data["data"]["searchCore"]["locationId"]
+
+    def fetch_data2(self, url, data, page, retries=3, backoff_factor=1):
+        """https://www.avito.ru/web/1/js/items?locationId=660530&radius=2&geoCoords=61.197339%2C62.858121&cd=0&s=104&p=2&localPriority=0&updateListOnly=true&context=H4sIAAAAAAAA_wEmANn_YToxOntzOjE6InkiO3M6MTY6InNySlpsT290QVFXcUxpZmoiO30pzFPpJgAAAA"""
+        parsed_url = urlparse(url)
+        # Получаем параметры запроса в виде словаря
+        query_params = parse_qs(parsed_url.query)
+
+        proxy_data = None
+        if self.proxy_obj:
+            proxy_data = {
+                "http": self.config.proxy_string,
+                "https": self.config.proxy_string,
+            }
+        location_id = self._getLocationId(data)
+        params = {
+            "locationId": location_id,
+            "radius": "2",
+            "geoCoords": query_params["geoCoords"],
+            "cd": "0",
+            "s": "104",
+            "p": f"{page}",
+            "localPriority": 0,
+            "updateListOnly": True,
+        }
+        new_url = f"https://www.avito.ru/web/1/js/items"
+        for attempt in range(1, retries + 1):
+            if self.stop_event and self.stop_event.is_set():
+                return
+
+            try:
+                response = self.session.get(
+                    url=new_url,
+                    params=params,
+                    headers=self.headers,
+                    proxies=proxy_data,
+                    cookies=self.cookies,
+                    impersonate="chrome",
+                    timeout=20,
+                    verify=False,
+                )
+                logger.debug(f"Попытка {attempt}: {response.status_code}")
+                # with open("data.json", "w", encoding="utf-8") as f:json.dump(response.json(), f, indent=2, ensure_ascii=False)
+
+                if response.status_code >= 500:
+                    raise requests.RequestsError(f"Ошибка сервера: {response.status_code}")
+                if response.status_code in [302, 403, 429]:
+                    self.bad_request_count += 1
+                    self.session = requests.Session()
+                    if attempt >= 3:
+                        self.cookies = self.get_cookies()
+                    self.change_ip()
+                    raise requests.RequestsError(f"Слишком много запросов: {response.status_code}")
+
+                self.save_cookies()
+                self.good_request_count += 1
+                temp = response.json()
+                return temp
+            except requests.RequestsError as e:
+                logger.debug(f"Попытка {attempt} закончилась неуспешно: {e}")
+                if attempt < retries:
+                    sleep_time = backoff_factor * attempt
+                    logger.debug(f"Повтор через {sleep_time} секунд...")
+                    time.sleep(sleep_time)
+                else:
+                    logger.info("Все попытки были неуспешными")
+                    return None
+
+    def parse_item(self, url, data_from_page, ads_models: ItemsResponse):
+        for page in range(1, self.config.count+1):
+            raw_data = self.fetch_data2(url, data_from_page, page, retries=self.config.max_count_of_retry)
+            catalog = raw_data.get("catalog") or {}
+            ads_models2 = ItemsResponse(**catalog)
+
+    def parse(self):
+        if self.config.one_file_for_link:
+            self.xlsx_handler = None
+
+        for _index, url in enumerate(self.config.urls):
+            html_code = self.fetch_data(url=url, retries=self.config.max_count_of_retry)
+            data_from_page = self.find_json_on_page(html_code=html_code)
+            try:
+                catalog = data_from_page.get("data", {}).get("catalog") or {}
+                ads_models = ItemsResponse(**catalog)
+            except ValidationError as err:
+                logger.error(f"При валидации объявлений произошла ошибка: {err}")
+                continue
+
+            self.parse_item(url, data_from_page, ads_models)
+
+
+if __name__ == "__main__":
+    config = load_avito_config("config.toml")
+    parser = AvitoParse(config)
+    parser.parse()
+

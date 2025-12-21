@@ -76,7 +76,7 @@ class PlaywrightClient:
         return dict(pair.split("=", 1) for pair in cookie_str.split("; ") if "=" in pair)
 
     async def launch_browser(self):
-        ensure_playwright_installed("chromium")
+        # ensure_playwright_installed("chromium")
         stealth = Stealth()
         self.playwright_context = stealth.use_async(async_playwright())
         playwright = await self.playwright_context.__aenter__()
@@ -153,13 +153,14 @@ class PlaywrightClient:
     async def get_cookies(self, url: str) -> dict:
         return await self.extract_cookies(url)
 
-    async def check_block(self, page, context):
+    async def check_block(self, page, context, wait_time=10):
         title = await page.title()
         logger.info(f"Не ошибка, а название страницы: {title}")
         if BAD_IP_TITLE in str(title).lower():
             logger.info("IP заблокирован")
             await context.clear_cookies()
-            await self.change_ip()
+            logger.info(f"Ожидание {wait_time} секунд перед повторной загрузкой страницы.")
+            await asyncio.sleep(wait_time)
             await page.reload(timeout=60 * 1000)
 
     async def change_ip(self, retries: int = MAX_RETRIES):
