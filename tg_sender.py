@@ -39,7 +39,7 @@ class SendAdToTg:
         ]
         
         # Добавьте подпись к первому изображению
-        media_group[0]["caption"] = message
+        media_group[0]["caption"] = message[:1000]
         media_group[0]["parse_mode"] = "MarkdownV2"
 
         for attempt in range(1, self.max_retries + 1):
