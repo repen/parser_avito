@@ -32,6 +32,7 @@ class SendAdToTg:
 
         if not images:
             logger.warning(f"No images found {ad}")
+            images = ["https://i.ibb.co/rG7MgdfF/1887013-middle.png"]
 
         media_group = [
             {"type": "photo", "media": image} for image in images[:10]
