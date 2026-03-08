@@ -178,8 +178,9 @@ class AvitoParse:
                     continue
 
                 data_from_page = self.find_json_on_page(html_code=html_code)
+
                 try:
-                    catalog = data_from_page.get("data", {}).get("catalog") or {}
+                    catalog = data_from_page.get("catalog") or {}
                     ads_models = ItemsResponse(**catalog)
                 except ValidationError as err:
                     logger.error(f"При валидации объявлений произошла ошибка: {err}")
@@ -219,24 +220,20 @@ class AvitoParse:
 
     @staticmethod
     def find_json_on_page(html_code, data_type: str = "mime") -> dict:
-        soup = BeautifulSoup(html_code, "html.parser")
+        import html as html_lib
+        html_code = BeautifulSoup(html_code, "html.parser")
         try:
-            for _script in soup.select('script'):
+            for _script in html_code.select('script'):
+
                 script_type = _script.get('type')
 
-                if data_type == 'mime' and script_type == 'mime/invalid':
-                    script_content = html.unescape(_script.text)
-                    parsed_data = json.loads(script_content)
 
-                    if 'state' in parsed_data:
-                        return parsed_data['state']
-
-                    elif 'data' in parsed_data:
-                        logger.info("data")
-                        return parsed_data['data']
-
-                    else:
-                        return parsed_data
+                if data_type == 'mime':
+                    for script in html_code.select('script'):
+                        if script.get('type') == 'mime/invalid' and script.get('data-mfe-state') == 'true' and 'sandbox' not in script.text:
+                            data = json.loads(html_lib.unescape(script.text))
+                            if data.get('i18n', {}).get('hasMessages', {}):
+                                return data.get('state', {}).get('data', {})
 
         except Exception as err:
             logger.error(f"Ошибка при поиске информации на странице: {err}")
