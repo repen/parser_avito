@@ -1,0 +1,3 @@
+nothing:
+  script:
+    - echo "CI is disabled by config"
