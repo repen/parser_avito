@@ -51,7 +51,7 @@ class AvitoParse:
 
     def get_tg_handler(self) -> SendAdToTg | None:
         if all([self.config.tg_token, self.config.tg_chat_id]):
-            return SendAdToTg(bot_token=self.config.tg_token, chat_id=self.config.tg_chat_id)
+            return SendAdToTg(bot_token=self.config.tg_token, chat_id=self.config.tg_chat_id, config=self.config)
         return None
 
     def _send_to_tg(self, ads: list[Item]) -> None:

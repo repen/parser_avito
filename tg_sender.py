@@ -5,13 +5,15 @@ import json
 
 from loguru import logger
 
+from dto import AvitoConfig
 from models import Item
 
 
 class SendAdToTg:
-    def __init__(self, bot_token: str, chat_id: list, max_retries: int = 5, retry_delay: int = 5):
+    def __init__(self, bot_token: str, chat_id: list, config, max_retries: int = 5, retry_delay: int = 5):
         self.bot_token = bot_token
         self.chat_id = chat_id
+        self.config: AvitoConfig = config
         self.api_url = f"https://api.telegram.org/bot{self.bot_token}/sendPhoto"
         self.max_retries = max_retries
         self.retry_delay = retry_delay
@@ -49,8 +51,17 @@ class SendAdToTg:
                     "media": json.dumps(media_group),
                 }
                 logger.info(payload)
-
-                response = requests.post(self.media_group_url, json=payload)
+                proxies = None
+                if self.config.http_proxy:
+                    proxies = {
+                        "http": self.config.http_proxy,
+                        "https": self.config.http_proxy,
+                    }
+                response = requests.post(
+                    self.media_group_url,
+                    json=payload,
+                    proxies=proxies
+                )
                 if response.status_code == 400:
                     logger.warning(
                         f"Не удалось отправить сообщения. Проверьте правильность введенных данных\n"

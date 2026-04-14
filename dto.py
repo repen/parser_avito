@@ -44,4 +44,6 @@ class AvitoConfig:
     use_webdriver: bool = True
     database: str = "database.db"
     cookies: str = "cookies.json"
+    http_proxy: Optional[str] = None
+
 
